@@ -1,0 +1,3 @@
+<launch>
+	<node ns="gvg_mapper_viz" name="viz" pkg="gvg_mapper" type="gvg_mapper_viz"  output="screen" args="/odom"/>
+</launch>

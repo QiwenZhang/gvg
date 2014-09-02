@@ -1,0 +1,7 @@
+<launch>
+	<node ns="indoor/laser_utils" pkg="laser_node" type="laserUtilsServer" name="laser_utils_server" output="screen" 
+	      launch-prefix=" " args=" ">
+	      <param name="robot_diam" value="0.5" type="double"/>
+        <param name="laser_max_range" value="5" type="double"/>
+     	</node>
+</launch>

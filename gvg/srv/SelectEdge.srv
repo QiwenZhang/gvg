@@ -1,0 +1,6 @@
+float64     lin_vel   # [m/s]
+float64     ang_vel   # [rad/s] 
+int32       node_id
+---
+bool        success
+float64     selected_bearing    # one of the possible bearings

@@ -1,0 +1,4 @@
+int32 node_id
+int32 target
+---
+float64 chosen_bearing

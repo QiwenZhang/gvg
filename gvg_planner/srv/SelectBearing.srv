@@ -1,0 +1,5 @@
+int32       node_id             # Planner receives node_id to query Mapper on possible edges
+float64     robot_angle
+---
+bool        success
+float64     selected_bearing    # one of the possible bearings

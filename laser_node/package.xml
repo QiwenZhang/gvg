@@ -1,0 +1,32 @@
+<package>
+  <name>laser_node</name>
+  <version>0.0.1</version>
+  <description> laser_node </description>
+  <maintainer email="yiannis@cim.mcgill.ca">Ioannis Rekleitis</maintainer>
+  <license>BSD</license>
+  <url>http://ros.org/wiki/laser_node</url>
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>visualization_msgs</build_depend>
+  <build_depend>bullet</build_depend>
+
+
+  <run_depend>message_runtime</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>visualization_msgs</run_depend>
+  <run_depend>bullet</run_depend>
+
+  <!--export> 
+    <cpp cflags="-I${prefix}/src" lflags="-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lbasic_geometry"/>
+  </export--> 
+</package>
+
+

@@ -1,0 +1,28 @@
+<launch>	
+   
+   <include file="$(find robot_node)/launch/simulator.launch" />
+   <include file="$(find laser_node)/launch/laser_utils_stage.launch" />
+   <include file="$(find gvg_planner)/launch/gvg_planner.launch" />
+   <include file="$(find gvg_mapper)/launch/gvg_mapper.launch">
+     <arg name="laser_offset_x" value="0.225" />
+     <arg name="laser_offset_y" value="0.0" />
+     <arg name="leave_meetpoint_min_dist" value="0.15" />
+     <arg name="leave_meetpoint_max_dist" value="0.40" />
+   </include>
+   <include file="$(find localizer)/launch/localizer_simulation.launch" />
+
+   <include file="$(find gvg_mapper)/launch/simulation_viz.launch" />
+   <include file="$(find laser_node)/launch/simulation_viz.launch" />
+   <include file="$(find localizer)/launch/viz.launch" />
+
+   <node name="rviz" pkg="rviz" type="rviz" respawn="false" output="screen"  args="-d $(find laser_node)/stage.rviz"/>
+
+   <node ns="indoor/gvg/" name="gvg_follower" pkg="gvg" type="gvg_follower"  output="screen" args=" ">
+   </node>
+   <node ns="indoor/gvg/" name="agent" pkg="gvg" type="agent"  output="screen" args=" ">
+      <param name="meetpoint_threshold" value="0.2" type="double" />
+      <param name="do_move"  		value="true"  		type="bool" />
+      <param name="lin_vel" value="1.0" type="double" />
+      <param name="ang_vel" value="0.69813170079" type="double" />
+   </node>
+</launch>

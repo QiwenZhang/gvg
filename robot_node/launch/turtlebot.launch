@@ -1,0 +1,13 @@
+<launch>
+  <node ns="indoor" pkg="robot_node" type="robotSim" name="turtleBot" output="screen" args="indoor/turtleBot">
+    <param name="dy_signal" value="0.0" type="double"/>
+    <param name="dy_kp" value="30.0" type="double"/>
+    <param name="dy_ki" value="0.0" type="double"/>
+    <param name="dy_kd" value="0.0" type="double"/>
+    <param name="ang_vel_signal" value="0.0" type="double"/>
+    <param name="ang_vel_kp" value="2.0" type="double"/>
+    <param name="ang_vel_ki" value="0.0" type="double"/>
+    <param name="ang_vel_kd" value="0.0" type="double"/>
+    <remap from="/indoor/cmd_vel" to="/cmd_vel_mux/input/teleop"/>
+  </node>
+</launch>

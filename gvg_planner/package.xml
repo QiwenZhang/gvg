@@ -1,0 +1,38 @@
+<package>
+  <name>gvg_planner</name>
+  <version>0.0.1</version>
+  <description>
+  Planning the exploration and mapping using the GVG algorithm
+  </description>
+  <maintainer email="yiannis@cim.mcgill.ca">Ioannis Rekleitis</maintainer>
+  <license>BSD</license>
+  <url>http://ros.org/wiki/localizer</url>
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>message_generation</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>gvg_mapper</build_depend>
+  <build_depend>localizer</build_depend>
+  <build_depend>eigen3</build_depend>
+  <build_depend>bullet</build_depend>
+  <build_depend>laser_node</build_depend>
+
+  <run_depend>message_runtime</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>eigen3</run_depend>
+  <run_depend>gvg_mapper</run_depend>
+  <run_depend>localizer</run_depend>
+  <run_depend>bullet</run_depend>
+  <run_depend>laser_node</run_depend>
+
+
+</package>
+
+

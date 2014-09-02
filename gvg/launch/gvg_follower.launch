@@ -1,0 +1,7 @@
+<launch>	
+   <include file="$(find laser_node)/launch/sim_laser_utils.launch" />
+   
+   <node ns="indoor/gvg/" name="gvg_follower" pkg="gvg" type="gvg_follower"  output="screen" args=" "/>
+   
+   <node ns="indoor/gvg/" name="follow_edge_viz" pkg="gvg" type="follow_edge_viz"  output="screen" args=" "/>
+</launch>

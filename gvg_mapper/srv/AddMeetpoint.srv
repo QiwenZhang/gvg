@@ -1,0 +1,8 @@
+std_msgs/Header header
+geometry_msgs/PoseWithCovariance  pose	# Meetpoint point
+float64 closest_distance			# closest obstacle distance
+float64[] possible_bearings			# possible directions from meetpoint
+laser_node/Obstacles meetpoint_obstacles		# obstacles defining meetpoint
+float64 robot_angle
+---
+gvg_mapper/GVGNode node

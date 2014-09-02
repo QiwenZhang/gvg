@@ -1,0 +1,3 @@
+<launch>
+	<node ns="indoor/laser_utils/viz" name="viz" pkg="laser_node" type="laser_utils_viz"  output="screen" args="/base_link_front_bumper_part"/>
+</launch>

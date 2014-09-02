@@ -1,0 +1,30 @@
+<launch>	
+   
+   <node name="remapper" pkg="remapper" type="remapper" output="screen" args=" ">
+     <param name="reverse_laser" value="false" type="bool" />
+   </node>
+   
+   
+   <include file="$(find robot_node)/launch/turtlebot.launch" />	
+   <include file="$(find laser_node)/launch/laser_utils_hokuyo.launch" />
+   <include file="$(find gvg_planner)/launch/gvg_planner.launch" />
+   <include file="$(find gvg_mapper)/launch/gvg_mapper.launch">
+     <arg name="laser_offset_x" value="0.0" />
+     <arg name="laser_offset_y" value="0.0" />
+     <arg name="leave_meetpoint_min_dist" value="0.15" />
+     <arg name="leave_meetpoint_max_dist" value="0.40" />
+   </include>
+   <include file="$(find localizer)/launch/localizer_turtlebot.launch" />
+
+   <include file="$(find gvg_mapper)/launch/turtlebot_viz.launch" />
+   <include file="$(find laser_node)/launch/turtlebot_viz.launch" />
+
+   <node ns="indoor/gvg/" name="gvg_follower" pkg="gvg" type="gvg_follower"  output="screen" args=" ">
+   </node>
+   <node ns="indoor/gvg/" name="agent" pkg="gvg" type="agent"  output="screen" args=" ">
+      <param name="meetpoint_threshold" value="0.20" type="double" />
+      <param name="do_move"  		value="true"  		type="bool" />
+      <param name="lin_vel" value="0.30" type="double" />
+      <param name="ang_vel" value="0.34906585039" type="double" />
+   </node>
+</launch>

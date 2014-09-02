@@ -1,0 +1,6 @@
+<launch>
+
+  <include file="$(find localizer)/launch/viz.launch" />
+  <node name="rviz" pkg="rviz" type="rviz" respawn="false" output="screen" args="-d $(find laser_node)/stage.rviz"/>
+
+</launch>

@@ -1,0 +1,4 @@
+<launch>
+  <node name="gvg_planner" pkg="gvg_planner" type="gvg_planner" output="screen" args=" " />
+
+</launch>

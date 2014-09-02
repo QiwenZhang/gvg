@@ -1,0 +1,7 @@
+std_msgs/Header             header
+geometry_msgs/PoseWithCovariance  pose
+float64                     closest_distance
+laser_node/Obstacles         meetpoint_obstacles
+float64                     robot_angle
+---
+gvg_mapper/GVGNode           node

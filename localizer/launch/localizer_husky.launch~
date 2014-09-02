@@ -1,0 +1,7 @@
+<launch>
+
+  <node ns="indoor/gvg/" name="localizerGVGNode" pkg="localizer" type="localizerGVGNode"  output="screen" args=" ">
+    <param name="simulation" value="false" type="bool" />
+  </node>
+
+</launch>

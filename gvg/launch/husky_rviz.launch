@@ -1,0 +1,12 @@
+<launch>
+
+  <node name="remapper" pkg="remapper" type="remapper" output="screen" args=" "/>
+  
+  <remap from="/indoor/base_scan" to="/lidar/reversed"/>
+  
+  <include file="$(find laser_node)/launch/laser_utils_husky.launch" />
+ 
+  <include file="$(find localizer)/launch/viz.launch" />
+  <node name="rviz" pkg="rviz" type="rviz" respawn="false" output="screen" args="-d $(find laser_node)/husky.rviz"/>
+
+</launch>

@@ -1,0 +1,8 @@
+<launch>	
+<node name="rviz" pkg="rviz" type="rviz" respawn="false" output="screen" args="-d $(find localizer)/localizer_rviz_config.vcg"/>
+
+<node ns="indoor/gvg/" name="localizerGVGNode" pkg="localizer" type="localizerGVGNode"  output="screen" args=" "/>
+
+<node ns="indoor/gvg/" name="localizer_viz" pkg="localizer" type="localizer_viz"  output="screen" args=" "/>
+
+</launch>

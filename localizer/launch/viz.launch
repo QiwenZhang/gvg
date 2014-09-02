@@ -1,0 +1,5 @@
+<launch>
+
+  <node ns="indoor/gvg/" name="localizer_viz" pkg="localizer" type="localizer_viz"  output="screen" args=" "/>
+
+</launch>

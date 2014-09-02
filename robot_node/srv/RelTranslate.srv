@@ -1,0 +1,4 @@
+float32 dx_in_m
+float32 lin_speed
+---
+bool success

@@ -1,0 +1,4 @@
+float32  dtheta_rad
+float32  ang_speed
+---
+bool success

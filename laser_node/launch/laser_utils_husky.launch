@@ -1,0 +1,8 @@
+<launch>
+	<node ns="indoor/laser_utils" pkg="laser_node" type="laserUtilsServer" name="laser_utils_server" output="screen" 
+	      launch-prefix=" " args=" ">
+    <remap from="/indoor/base_scan" to="/lidar/reversed"/>
+    <param name="robot_diam" value="1.2" type="double"/>
+    <param name="laser_max_range" value="30" type="double"/>
+  </node>
+</launch>
