@@ -2,3 +2,5 @@ int32 source
 int32 target
 ---
 int32[] vertex_list
+float64 distance
+bool frontier # returns true if the target node is a frontier node

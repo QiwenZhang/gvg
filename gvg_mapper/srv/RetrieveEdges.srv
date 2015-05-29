@@ -1,0 +1,3 @@
+int32 node_id
+---
+gvg_mapper/GVGEdgeMsg[] edges

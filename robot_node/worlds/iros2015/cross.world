@@ -9,14 +9,14 @@ define hokuyolaser ranger
   sensor(       
     # laser-specific properties
     # factory settings for LMS200  
-    range [ 0.0  5.0 ]
+    range [ 0.0  15.0 ]
     fov 270.0
     samples 1081
   )
   model
   (
     # generic model properties
-    size [ 0.070 0.070 0.050 ] # dimensions from LMS200 data sheet  
+    size [ 0.07 0.07 0.05 ] # dimensions from LMS200 data sheet  
     color "blue"
   )
 )
@@ -54,10 +54,10 @@ interval_sim 100  # simulation timestep in milliseconds
 # configure the GUI window
 window
 (
-  size [ 635 666 ] # in pixels
-  scale 10.716   # pixels per meter
-  center [ -0.180  -0.139 ]
-  rotate [ 0.000  0.000 ]
+  size [ 635.000 666.000 ] # in pixels
+  scale 36.995   # pixels per meter
+  center [ -0.040  -0.274 ]
+  rotate [ 0  0 ]
 
   show_data 1              # 1=on 0=off
 )
@@ -67,8 +67,8 @@ floorplan
 ( 
   name "grid2"
   size [56.000 56.000 0.500]
-  pose [0.000 0.000 0.000 0.000]
-  bitmap "bitmaps/grid3.png"
+  pose [0 0 0 0]
+  bitmap "cross.png"
 )
 # set the resolution of
 
@@ -83,7 +83,7 @@ define pioneer_base position
   drive "diff"       # Differential steering model.
   gui_nose 1                    # Draw a nose on the robot so we can see which way it points
   obstacle_return 1             # Can hit things.
-  ranger_return 0.500              # reflects sonar beams
+  ranger_return 0.5              # reflects sonar beams
   blob_return 1                 # Seen by blobfinders  
   fiducial_return 1             # Seen as "1" fiducial finders
 
@@ -92,7 +92,7 @@ define pioneer_base position
 
   # alternative odometric localization with simple error model
   # localization "odom"             # Change to "gps" to have impossibly perfect, global odometry
-  #  odom_error [ 0.0 0.0 0.0 ]     # Odometry error or slip in X, Y and Theta
+  #  odom_error [ 0.05 0.05 0.1 ]     # Odometry error or slip in X, Y and Theta
                                      # (Uniform random distribution)   
 
   # four DOF kinematics limits
@@ -106,10 +106,10 @@ define pioneer_base position
 define pioneer2dx_base_no_sonar pioneer_base
 (
   # actual size
-  size [0.440 0.380 0.220] # sizes from MobileRobots' web site
+  size [0.44 0.38 0.22] # sizes from MobileRobots' web site
 
   # the pioneer's center of rotation is offset from its center of area
-  origin [-0.040 0.000 0.000 0.000]
+  origin [-0.04 0 0 0]
 
   # draw a nose on the robot so we can see which way it points
   gui_nose 1
@@ -143,6 +143,6 @@ pioneer2dx_no_sonar
 (
   # can refer to the robot by this name
   name "indoor"
-  pose [ 0.182 5.848 0.000 -116.518 ] 
-  hokuyolaser(pose [ 0.225 0.000 -0.150 0.000 ])
+  pose [ -1 6 0 0.0 ] 
+  hokuyolaser(pose [ 0.225 0.000 -0.15 0.000 ])
 )

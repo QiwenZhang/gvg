@@ -9,7 +9,7 @@ define hokuyolaser ranger
   sensor(       
     # laser-specific properties
     # factory settings for LMS200  
-    range [ 0.0  5.0 ]
+    range [ 0.0  15.0 ]
     fov 270.0
     samples 1081
   )
@@ -56,7 +56,7 @@ window
 (
   size [ 635 666 ] # in pixels
   scale 10.716   # pixels per meter
-  center [ -0.180  -0.139 ]
+  center [ 2.694  -2.114 ]
   rotate [ 0.000  0.000 ]
 
   show_data 1              # 1=on 0=off
@@ -68,7 +68,7 @@ floorplan
   name "grid2"
   size [56.000 56.000 0.500]
   pose [0.000 0.000 0.000 0.000]
-  bitmap "bitmaps/grid3.png"
+  bitmap "iros_grid1.png"
 )
 # set the resolution of
 
@@ -92,7 +92,7 @@ define pioneer_base position
 
   # alternative odometric localization with simple error model
   # localization "odom"             # Change to "gps" to have impossibly perfect, global odometry
-  #  odom_error [ 0.0 0.0 0.0 ]     # Odometry error or slip in X, Y and Theta
+  #  odom_error [ 0.05 0.05 0.1 ]     # Odometry error or slip in X, Y and Theta
                                      # (Uniform random distribution)   
 
   # four DOF kinematics limits
@@ -143,6 +143,6 @@ pioneer2dx_no_sonar
 (
   # can refer to the robot by this name
   name "indoor"
-  pose [ 0.182 5.848 0.000 -116.518 ] 
+  pose [ 0 6 0.000 1.186 ] 
   hokuyolaser(pose [ 0.225 0.000 -0.150 0.000 ])
 )
