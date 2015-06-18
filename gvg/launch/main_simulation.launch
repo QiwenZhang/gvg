@@ -6,10 +6,16 @@
    <include file="$(find gvg_mapper)/launch/gvg_mapper.launch">
      <arg name="laser_offset_x" value="0.225" />
      <arg name="laser_offset_y" value="0.0" />
-     <arg name="leave_meetpoint_min_dist" value="0.15" />
-     <arg name="leave_meetpoint_max_dist" value="0.40" />
+     <arg name="leave_meetpoint_min_dist" value="0.5" />
+     <arg name="leave_meetpoint_max_dist" value="0.75" />
    </include>
    <include file="$(find localizer)/launch/localizer_simulation.launch" />
+   
+   <node ns="indoor/gvg/" name="map_handler" pkg="map_handler" type="map_handler" output="screen" args=" ">
+       <param name="map_save_filename" value="/home/thalassa/qzhang32/catkin_ws/src/indoor_pkgs/map_handler/maps/CIM" type="str" />
+       <param name="map_load_filename" value="/home/thalassa/qzhang32/catkin_ws/src/indoor_pkgs/map_handler/maps/31-fullgrid" type="str" />
+       <param name="load" value="false" type="bool" />
+   </node>
 
    <include file="$(find gvg_mapper)/launch/simulation_viz.launch" />
    <include file="$(find laser_node)/launch/simulation_viz.launch" />

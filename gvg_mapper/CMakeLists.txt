@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(FILES
   GVGEdgeMsg.msg  
   GVGNode.msg
+  EdgeBearingMsg.msg
 )
 
 add_service_files(FILES
@@ -28,6 +29,8 @@ add_service_files(FILES
   RetrieveBearings.srv
   RetrievePath.srv
   CheckRelocalize.srv
+  LoadSavedMap.srv
+  RetrieveEdges.srv
 )
 
 # Set the build type.  Options are:

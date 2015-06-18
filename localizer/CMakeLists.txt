@@ -28,6 +28,8 @@ add_service_files(FILES
   MinUncertainty.srv  
   StartFilter.srv  
   UpdateFilter.srv
+  LoadLocalizerMap.srv
+  InitLoadMapTransform.srv
 )
 
 # Set the build type.  Options are:
@@ -81,13 +83,10 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 #target_link_libraries(example ${PROJECT_NAME})
 add_executable(localizerGVGNode src/main.cpp src/localizerGVG.cpp)
 add_executable(localizer_viz  src/viz.cpp)
-#add_executable(testEigen  src/testEigen.cpp)
 
 target_link_libraries(localizerGVGNode ${catkin_LIBRARIES} ${BULLET_LIBRARIES})
 add_dependencies(localizerGVGNode ${PROJECT_NAME}_generate_messages_cpp)
 target_link_libraries(localizer_viz ${catkin_LIBRARIES} ${BULLET_LIBRARIES} ${OpenCV_LIBRARIES})
 add_dependencies(localizer_viz ${PROJECT_NAME}_generate_messages_cpp)
-#target_link_libraries(testEigen ${catkin_LIBRARIES} ${BULLET_LIBRARIES} ${OpenCV_LIBRARIES})
-#add_dependencies(testEigen ${PROJECT_NAME}_generate_messages_cpp)
 
 

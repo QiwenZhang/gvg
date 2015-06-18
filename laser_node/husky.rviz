@@ -11,6 +11,8 @@ Panels:
         - /MarkerArray1
         - /MarkerArray2
         - /Marker1
+        - /Map1
+        - /Map1/Status1
       Splitter Ratio: 0.5
     Tree Height: 784
 Visualization Manager:
@@ -31,9 +33,9 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 1
+      Max Intensity: 850
       Min Color: 0; 0; 0
-      Min Intensity: 1
+      Min Intensity: 243
       Name: LaserScan
       Position Transformer: XYZ
       Queue Size: 10
@@ -41,7 +43,7 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.01
       Style: Flat Squares
-      Topic: /indoor/base_scan
+      Topic: /lidar/reversed
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
@@ -50,13 +52,33 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        base_footprint:
+        back_left_wheel:
           Value: true
-        base_laser_link:
+        back_right_wheel:
+          Value: true
+        base_footprint:
           Value: true
         base_link:
           Value: true
+        base_link_front_bumper_part:
+          Value: true
+        base_link_rear_bumper_part:
+          Value: true
+        base_link_top_plate_part:
+          Value: true
+        base_link_user_rail_part:
+          Value: true
+        front_left_wheel:
+          Value: true
+        front_right_wheel:
+          Value: true
+        imu_orientation:
+          Value: true
+        map:
+          Value: true
         odom:
+          Value: true
+        odometry:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -64,11 +86,31 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        odom:
-          base_footprint:
-            base_link:
-              base_laser_link:
-                {}
+        base_footprint:
+          base_link:
+            back_left_wheel:
+              {}
+            back_right_wheel:
+              {}
+            base_link_front_bumper_part:
+              {}
+            base_link_rear_bumper_part:
+              {}
+            base_link_top_plate_part:
+              {}
+            base_link_user_rail_part:
+              {}
+            front_left_wheel:
+              {}
+            front_right_wheel:
+              {}
+          imu_orientation:
+            {}
+          odometry:
+            {}
+        map:
+          odom:
+            {}
       Update Interval: 0
       Value: true
     - Class: rviz/MarkerArray
@@ -95,10 +137,18 @@ Visualization Manager:
         closest_obstacles: true
       Queue Size: 100
       Value: true
+    - Alpha: 0.7
+      Class: rviz/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Map
+      Topic: /map
+      Value: true
   Enabled: true
   Global Options:
-    Background Color: 48; 48; 48
-    Fixed Frame: base_laser_link
+    Background Color: 0; 0; 0
+    Fixed Frame: base_link
     Frame Rate: 30
   Name: root
   Tools:
@@ -114,7 +164,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 9.4454
+      Distance: 12.8714
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1

@@ -21,9 +21,9 @@ find_package(catkin REQUIRED COMPONENTS
   remapper
 )
 
-add_message_files(FILES
-   GVGNode.msg
-)
+#add_message_files(FILES
+#
+#)
 
 add_service_files(FILES
   Access.srv  
@@ -57,6 +57,7 @@ generate_messages(
   geometry_msgs
   nav_msgs  
   laser_node
+  gvg_mapper
 )
 
 catkin_package(CATKIN_DEPENDS 

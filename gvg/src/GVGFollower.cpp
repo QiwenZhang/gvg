@@ -34,6 +34,8 @@ GVGFollower::GVGFollower():
   odom_sub          = nh.subscribe("/indoor/gvg/odom_combined", 1, &GVGFollower::handle_odometry, this);
   wf_pub            = nh.advertise<robot_node::Follow_Wall>("/indoor/follow_wall", 1);
 
+  this->LEAVE_MEETPOINT_MIN_DIST = 0.15;
+  this->LEAVE_MEETPOINT_MAX_DIST = 0.40;
   nh.getParam("/gvg_mapper/laser_distance_x", this->laser_offset_x);
   nh.getParam("/gvg_mapper/laser_distance_y", this->laser_offset_y);
   nh.getParam("/indoor/gvg/agent/meetpoint_threshold", this->MEETPOINT_THRESHOLD);
@@ -293,12 +295,14 @@ void GVGFollower::InstantaneousFollowEdge(laser_node::Obstacles& msg, bool do_mo
   follow_edge_fbk.dtheta_in_rad = dtheta_rad;
   follow_edge_srv.publishFeedback(follow_edge_fbk);
   
-  geometry_msgs::Point32 p; 
+  geometry_msgs::Point p; 
   p.x = odom.pose.pose.position.x; 
   p.y = odom.pose.pose.position.y;
-  
+  // We are using Z coordinate to pass the orientation of robot! Not the height of robot
+  p.z = robot_angle;
   gvg_mapper::ExtendEdge extend_edge_srv;
-  extend_edge_srv.request.p = p;
+  extend_edge_srv.request.p_stamped.header = odom.header;
+  extend_edge_srv.request.p_stamped.point = p;
   
   if(!extend_edge_cln.call(extend_edge_srv)) {
     ROS_WARN("Could not call extend edge to Mapper!");
@@ -711,6 +715,9 @@ void GVGFollower::ChooseBestMinPair(laser_node::Obstacles& obs, laser_node::Obst
  */
 void GVGFollower::handle_follow_edge_goal(const gvg::FollowEdgeGoalConstPtr& goal) {
   
+  // Copy information so we can overwrite it with updating parameter do_move
+  bool do_move = goal->do_move;
+  
   ros::Rate r(10);
   while (!obstacles_read) {
     ros::spinOnce();
@@ -721,6 +728,7 @@ void GVGFollower::handle_follow_edge_goal(const gvg::FollowEdgeGoalConstPtr& goa
   ros::Rate rate(15);
 
   while (ros::ok() && follow_edge_srv.isActive() && !follow_edge_srv.isPreemptRequested()) {
+    nh.getParam("/indoor/gvg/agent/do_move", do_move);
     ros::spinOnce();
     possible_bearings.clear();
     meetpoint_obstacles.collection.clear();
@@ -751,7 +759,7 @@ void GVGFollower::handle_follow_edge_goal(const gvg::FollowEdgeGoalConstPtr& goa
     p.y += sin(robot_angle)*distance;
 
     bool onEndpoint = DetectEndPoint(obstacles);
-    if (onEndpoint && goal->do_move) {
+    if (onEndpoint && do_move) {
       ROS_INFO("Endpoint found!");
       follow_edge_res.success = true;
       follow_edge_res.stoppedBecause = gvg::FollowEdgeResult::FOUND_ENDPOINT;
@@ -786,7 +794,7 @@ void GVGFollower::handle_follow_edge_goal(const gvg::FollowEdgeGoalConstPtr& goa
         return;
       }
       
-      gvg::GVGNode result;
+      gvg_mapper::GVGNode result;
       result.node_id = add_endpoint_srv.response.node.node_id;
       result.p = add_endpoint_srv.response.node.p;
       result.degree = add_endpoint_srv.response.node.degree;
@@ -832,7 +840,7 @@ void GVGFollower::handle_follow_edge_goal(const gvg::FollowEdgeGoalConstPtr& goa
     if (detect_meetpoint_bypass) onMeetpoint = DetectMeetPoint(local_obstacles, possible_bearings, 100, 
 				       MEETPOINT_BEARING_ANGLE_DIFF, meetpoint_obstacles);
  
-    if (onMeetpoint && goal->do_move) {
+    if (onMeetpoint && do_move) {
       detect_meetpoint_bypass = false;
       ROS_INFO("Meetpoint found!");
       
@@ -862,7 +870,7 @@ void GVGFollower::handle_follow_edge_goal(const gvg::FollowEdgeGoalConstPtr& goa
         return;
       }
       
-      gvg::GVGNode result;
+      gvg_mapper::GVGNode result;
       result.node_id = add_meetpoint_srv.response.node.node_id;
       result.p = add_meetpoint_srv.response.node.p;
       result.degree = add_meetpoint_srv.response.node.degree;
@@ -935,7 +943,7 @@ void GVGFollower::handle_follow_edge_goal(const gvg::FollowEdgeGoalConstPtr& goa
 
     
       // Stop following GVG and navigate locally to current closest meetpoint
-      if (goal->do_move && closest_obstacles.size() >= 3) {
+      if (do_move && closest_obstacles.size() >= 3) {
         ROS_INFO("Close to Meetpoint: starting navigation to meetpoint");
         double ang_vel;
         nh.getParam("/indoor/gvg/agent/ang_vel", ang_vel);
@@ -945,10 +953,10 @@ void GVGFollower::handle_follow_edge_goal(const gvg::FollowEdgeGoalConstPtr& goa
       else {
         // if the robot is moved manually then follow edge will not terminate 
         // on endpoints so nothing guarantees there will be more than 2 obstacles  
-        if (!goal->do_move && obstacles.collection.size() >= 2) { 
-          InstantaneousFollowEdge(obstacles, goal->do_move, goal->lin_vel);
-        } else if (goal->do_move) {
-          InstantaneousFollowEdge(obstacles, goal->do_move, goal->lin_vel);
+        if (!do_move && obstacles.collection.size() >= 2) { 
+          InstantaneousFollowEdge(obstacles, do_move, goal->lin_vel);
+        } else if (do_move) {
+          InstantaneousFollowEdge(obstacles, do_move, goal->lin_vel);
         }
         obs_mutex.unlock();
       }

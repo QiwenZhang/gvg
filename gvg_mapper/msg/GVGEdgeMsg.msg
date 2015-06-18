@@ -6,6 +6,6 @@ int32                    source                # the id of the source node
 
 int32                    target                # the id of the target node
 
-geometry_msgs/Point32[]  line                  # points along the edge
+geometry_msgs/PointStamped[]  line             # points along the edge
 
 float64                  length                # length of edge  

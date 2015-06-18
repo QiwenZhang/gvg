@@ -7,10 +7,6 @@ Panels:
         - /Global Options1
         - /Status1
         - /LaserScan1
-        - /TF1
-        - /MarkerArray1
-        - /MarkerArray2
-        - /Marker1
       Splitter Ratio: 0.5
     Tree Height: 784
 Visualization Manager:
@@ -41,7 +37,7 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.01
       Style: Flat Squares
-      Topic: /indoor/base_scan
+      Topic: /scan
       Use Fixed Frame: true
       Use rainbow: false
       Value: true
@@ -52,11 +48,73 @@ Visualization Manager:
         All Enabled: true
         base_footprint:
           Value: true
-        base_laser_link:
-          Value: true
         base_link:
           Value: true
+        camera_depth_frame:
+          Value: true
+        camera_depth_optical_frame:
+          Value: true
+        camera_link:
+          Value: true
+        camera_rgb_frame:
+          Value: true
+        camera_rgb_optical_frame:
+          Value: true
+        caster_back_link:
+          Value: true
+        caster_front_link:
+          Value: true
+        cliff_sensor_front_link:
+          Value: true
+        cliff_sensor_left_link:
+          Value: true
+        cliff_sensor_right_link:
+          Value: true
+        gyro_link:
+          Value: true
         odom:
+          Value: true
+        plate_bottom_link:
+          Value: true
+        plate_middle_link:
+          Value: true
+        plate_top_link:
+          Value: true
+        pole_bottom_0_link:
+          Value: true
+        pole_bottom_1_link:
+          Value: true
+        pole_bottom_2_link:
+          Value: true
+        pole_bottom_3_link:
+          Value: true
+        pole_bottom_4_link:
+          Value: true
+        pole_bottom_5_link:
+          Value: true
+        pole_kinect_0_link:
+          Value: true
+        pole_kinect_1_link:
+          Value: true
+        pole_middle_0_link:
+          Value: true
+        pole_middle_1_link:
+          Value: true
+        pole_middle_2_link:
+          Value: true
+        pole_middle_3_link:
+          Value: true
+        pole_top_0_link:
+          Value: true
+        pole_top_1_link:
+          Value: true
+        pole_top_2_link:
+          Value: true
+        pole_top_3_link:
+          Value: true
+        wheel_left_link:
+          Value: true
+        wheel_right_link:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -67,38 +125,138 @@ Visualization Manager:
         odom:
           base_footprint:
             base_link:
-              base_laser_link:
+              camera_rgb_frame:
+                camera_depth_frame:
+                  camera_depth_optical_frame:
+                    {}
+                camera_link:
+                  {}
+                camera_rgb_optical_frame:
+                  {}
+              caster_back_link:
+                {}
+              caster_front_link:
+                {}
+              cliff_sensor_front_link:
+                {}
+              cliff_sensor_left_link:
+                {}
+              cliff_sensor_right_link:
+                {}
+              gyro_link:
+                {}
+              plate_bottom_link:
+                {}
+              plate_middle_link:
+                {}
+              plate_top_link:
+                {}
+              pole_bottom_0_link:
+                {}
+              pole_bottom_1_link:
+                {}
+              pole_bottom_2_link:
+                {}
+              pole_bottom_3_link:
+                {}
+              pole_bottom_4_link:
+                {}
+              pole_bottom_5_link:
+                {}
+              pole_kinect_0_link:
+                {}
+              pole_kinect_1_link:
+                {}
+              pole_middle_0_link:
+                {}
+              pole_middle_1_link:
+                {}
+              pole_middle_2_link:
+                {}
+              pole_middle_3_link:
+                {}
+              pole_top_0_link:
+                {}
+              pole_top_1_link:
+                {}
+              pole_top_2_link:
+                {}
+              pole_top_3_link:
+                {}
+              wheel_left_link:
+                {}
+              wheel_right_link:
                 {}
       Update Interval: 0
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /indoor/laser_utils/viz/obstacles
-      Name: MarkerArray
+      Name: Obstacles
       Namespaces:
-        closest_obstacles: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /indoor/laser_utils/viz/obstacle_names
-      Name: MarkerArray
+      Name: Obstacles Names
       Namespaces:
-        obstacle_names: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /indoor/laser_utils/viz/obstacles_closest_points
-      Name: Marker
+      Name: Obstacles Closest Points
       Namespaces:
-        closest_obstacles: true
+        {}
       Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /gvg_mapper_viz/edges
+      Name: Edges
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /gvg_mapper_viz/edges_names
+      Name: Edges Names
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /gvg_mapper_viz/meetpoints
+      Name: Nodes
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /gvg_mapper_viz/meetpoints_names
+      Name: Nodes Names
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Alpha: 1
+      Class: rviz/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Map
+      Topic: /map
       Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
-    Fixed Frame: base_laser_link
+    Fixed Frame: odom
     Frame Rate: 30
   Name: root
   Tools:
@@ -114,22 +272,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 15.0389
+      Distance: 44.3738
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: -0.977408
+        Y: 12.9101
+        Z: -28.6764
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 1.2204
+      Pitch: 1.1204
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.6604
+      Yaw: 4.7104
     Saved: ~
 Window Geometry:
   Displays:
@@ -137,7 +295,7 @@ Window Geometry:
   Height: 1022
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd00000001000000000000010f0000039ffc0200000001fb000000100044006900730070006c00610079007301000000410000039f000000dd00ffffff0000057b0000039f00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000001350000039ffc0200000001fb000000100044006900730070006c00610079007301000000410000039f000000dd00ffffff000005550000039f00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Width: 1680
   X: -7
   Y: 0

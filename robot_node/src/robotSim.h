@@ -5,7 +5,6 @@
 #include <robot_node/RelRotate.h>
 #include <robot_node/Brake.h>
 #include <robot_node/RelTranslate.h>
-#include <robot_node/RelGoto.h>
 #include <robot_node/Follow_Wall.h>
 #include <nav_msgs/Odometry.h>
 #include <string>
@@ -55,7 +54,6 @@ class robotSim {
 
   ros::NodeHandle    nh;
   ros::Publisher     movePub;
-  ros::Subscriber    gotoSub;
   ros::Subscriber    odomSub;
   ros::Subscriber    wfSub;
   ros::ServiceServer relRotSrv;

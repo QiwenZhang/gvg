@@ -1,4 +1,8 @@
 <launch>
-  <node name="gvg_planner" pkg="gvg_planner" type="gvg_planner" output="screen" args=" " />
-
+  <node name="gvg_planner" pkg="gvg_planner" type="gvg_planner" output="screen" args=" ">
+    <param name="Astar_weight" value="0.0" type="double" />
+    <param name="random_reloc_target" value="false" type="bool" />
+    <param name="frontier_min_uncertainty_exploration" value="true" type="bool" />
+  </node>
+   
 </launch>

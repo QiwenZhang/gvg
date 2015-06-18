@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
     case gvg::FollowEdgeResult::FOUND_MEETPOINT: {
       assert(result->node.degree >= 3);
       assert(result->node.possible_bearings.size() >= 3);
-      assert(result->node.surrounding_obstacles.collection.size() >= 3);
+      //assert(result->node.surrounding_obstacles.collection.size() >= 3);
       assert(result->node.edge_angle_diffs.size() == result->node.possible_bearings.size());
 
       gvg::SelectEdge sesrv;

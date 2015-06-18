@@ -6,13 +6,6 @@
 #include <gvg_mapper/GVGNode.h>
 #include <gvg_mapper/GVGEdgeMsg.h>
 #include "GVGGraph.h"
-#include <gvg_mapper/AddMeetpoint.h>
-#include <gvg_mapper/AddEndpoint.h>
-#include <gvg_mapper/ExtendEdge.h>
-#include <gvg_mapper/RetrieveBearings.h>
-#include <gvg_mapper/RetrievePath.h>
-#include <gvg_mapper/CheckRelocalize.h>
-#include <localizer/UpdateFilter.h>
 #include <Eigen/Dense>
 #include <iostream>
 #include <string>
@@ -80,15 +73,20 @@ GVGGraph::GVGGraph() {
   this->relocalize = false;
   this->relocalize_epsilon = 0.0;
   this->robot_angle_correction = 0.0;
+  this->mapLoadLocalization = true;
   this->add_meetpoint_srv = nh.advertiseService("add_meetpoint", &GVGGraph::addMeetpoint, this);
   this->add_endpoint_srv = nh.advertiseService("add_endpoint", &GVGGraph::addEndpoint, this);
   this->extend_edge_srv = nh.advertiseService("extend_edge", &GVGGraph::extendGVGEdge, this);
   this->retrieve_bearings_srv = nh.advertiseService("retrieve_bearings", &GVGGraph::retrieveBearings, this);
   this->retrieve_path_srv = nh.advertiseService("retrieve_path", &GVGGraph::retrievePath, this);
   this->check_relocalize_srv = nh.advertiseService("check_relocalize", &GVGGraph::checkRelocalize, this);
+  this->retrieve_edges_srv = nh.advertiseService("retrieve_edges", &GVGGraph::retrieveEdges, this);
   this->process_meetpoint_cln = nh.serviceClient<localizer::UpdateFilter>("/indoor/gvg/UpdateFilter");
   this->gvg_node_pub = nh.advertise<gvg_mapper::GVGNode>("node", 1);
   this->gvg_edge_pub = nh.advertise<gvg_mapper::GVGEdgeMsg>("edge", 1);
+  this->lastVertex = nullVertex();
+  this->load_map_srv = nh.advertiseService("load_saved_map", &GVGGraph::loadSavedMap, this);
+  this->init_load_map_transform_cln = nh.serviceClient<localizer::InitLoadMapTransform>("/indoor/gvg/InitLoadMapTransform");
   nh.getParam("/indoor/gvg/agent/meetpoint_threshold", this->MEETPOINT_THRESHOLD);
   nh.getParam("/gvg_mapper/laser_distance_x", this->laser_offset_x);
   nh.getParam("/gvg_mapper/laser_distance_y", this->laser_offset_y);
@@ -109,7 +107,7 @@ Vertex GVGGraph::addVertex(GVGVertex& v, double robot_angle, geometry_msgs::Pose
   Vertex target = nullVertex();
   arriving_bearing = -1;
 
-  if (vertex_matching_policy == 0) {
+  if (vertex_matching_policy == 0 && mapLoadLocalization) {
     double closestDistance = SAME_VERTEX_RADIUS;
     Vertex_iter vertex, vertex_end;
     for (tie(vertex, vertex_end) = vertices(G); vertex != vertex_end; vertex++) {
@@ -160,7 +158,7 @@ Vertex GVGGraph::addVertex(GVGVertex& v, double robot_angle, geometry_msgs::Pose
       double min_error = INFINITY;
       Vertex_iter    vertex, vertex_end;
       for (tie(vertex, vertex_end) = vertices(G); vertex != vertex_end; vertex++) {
-        if ((ellipse.contains(G[*vertex].p)) && (abs(v.closest_distance - G[*vertex].closest_distance) <= closest_distance_threshold) && (v.expected_degree == G[*vertex].expected_degree)) {
+        if ((ellipse.contains(G[*vertex].p) || !mapLoadLocalization) && (abs(v.closest_distance - G[*vertex].closest_distance) <= closest_distance_threshold) && (v.expected_degree == G[*vertex].expected_degree)) {
           
           // Check if we have already traveled this edge by looking at edge signatures
           vector<int> dismissed_edges;
@@ -239,7 +237,7 @@ Vertex GVGGraph::addVertex(GVGVertex& v, double robot_angle, geometry_msgs::Pose
       }
     }
   }
-
+  
   if (num_vertices(G) > 0) {
     srand(time(NULL));
     float r = (float)rand()/(float)RAND_MAX;
@@ -255,6 +253,16 @@ Vertex GVGGraph::addVertex(GVGVertex& v, double robot_angle, geometry_msgs::Pose
     unexploredEdgesCount.push_back(v.expected_degree);
   } else {
     ROS_INFO("Found matching vertex %d", G[target].node_id);
+    mapLoadLocalization = true;
+    
+    localizer::InitLoadMapTransform srv;
+    srv.request.bearing_angle = abs_angle(G[target].vertex_angle, G[target].possible_bearings.at(arriving_bearing).edge_angle_diff);
+    srv.request.bearing_angle = abs_angle(srv.request.bearing_angle, M_PI);
+    
+    if (!init_load_map_transform_cln.call(srv)) {
+      ROS_WARN("Could not call localizer to pass init load map bearing information!");
+    }
+    
   }
   
   // TODO: Uncertain if code is useful when we have robot_pose_ekf. Fix the robot orientation relative to the arriving bearing by looking at the possible bearings angle differences
@@ -266,10 +274,16 @@ Vertex GVGGraph::addVertex(GVGVertex& v, double robot_angle, geometry_msgs::Pose
     robot_angle_correction = robot_angle_correction/v.possible_bearings.size();
   }*/
 
-  if (num_vertices(G) > 1) {
+  if (num_vertices(G) > 1 && lastVertex != nullVertex()) {
     G[target].possible_bearings.at(arriving_bearing).visited = true;
     // Update the vertex bearings to the newly added edge
     if (G[target].possible_bearings.at(arriving_bearing).edge_id == -1) {
+      
+      // Update the old vertex bearing information
+      G[lastVertex].possible_bearings.at(lastVertexBearing).edge_id = currentEdge.edge_id;
+      G[lastVertex].possible_bearings.at(lastVertexBearing).visited = true;
+      unexploredEdgesCount.at(G[lastVertex].node_id) -= 1;
+      
       G[target].possible_bearings.at(arriving_bearing).edge_id = currentEdge.edge_id;
       unexploredEdgesCount.at(G[target].node_id) -= 1;
       // Add edge to graph
@@ -279,7 +293,7 @@ Vertex GVGGraph::addVertex(GVGVertex& v, double robot_angle, geometry_msgs::Pose
       currentEdge.source = G[lastVertex].node_id;
       currentEdge.target = G[target].node_id;
       edges_list.push_back(currentEdge);
-     
+      
       // Publish edge information for visualization purposes
       gvg_mapper::GVGEdgeMsg msg;
       msg.header = header;
@@ -369,18 +383,6 @@ bool GVGGraph::addMeetpoint(gvg_mapper::AddMeetpoint::Request& req, gvg_mapper::
 
   v = G[addVertex(v, req.robot_angle, req.pose)];
 
-  gvg_mapper::GVGNode msg;
-  msg.node_id = v.node_id;      
-  msg.p       = v.p;
-  msg.degree  = v.expected_degree;
-  msg.possible_bearings = req.possible_bearings;
-  msg.edge_angle_diffs.assign(edge_angle_diffs.begin(), edge_angle_diffs.end());
-  msg.closest_distance = v.closest_distance;
-  msg.surrounding_obstacles = v.surrounding_obstacles;
-  msg.header = req.header;
-
-  gvg_node_pub.publish(msg);
-
   // Service call to localizer for process meetpoint
   localizer::UpdateFilter srv;
   srv.request.id = v.node_id;
@@ -410,12 +412,44 @@ bool GVGGraph::addMeetpoint(gvg_mapper::AddMeetpoint::Request& req, gvg_mapper::
   // Update meetpoint locations with localizer data
   for (int i = 3; i < (int) X.size(); i += 3) {
     int meetpoint_id = (i - 3)/3;
-    geometry_msgs::Point32 p = G[meetpoint_id].p;
-    G[meetpoint_id].p.x = X.at(i);
-    G[meetpoint_id].p.y = X.at(i+1);
+    geometry_msgs::Point32 p;
+    p.x = X.at(i);
+    p.y = X.at(i+1);
+    G[meetpoint_id].p = p;
+    G[meetpoint_id].vertex_angle = X.at(i+2);
   }
 
-  res.node = msg;  
+  Vertex_iter    vertex, vertex_end;
+  for (tie(vertex, vertex_end) = vertices(G); vertex != vertex_end; vertex++) {
+    gvg_mapper::GVGNode msg;
+    msg.node_id = G[*vertex].node_id;      
+    msg.p       = G[*vertex].p;
+    msg.degree  = G[*vertex].expected_degree;
+    std::vector<gvg_mapper::EdgeBearingMsg> bearings;
+    for (int i = 0; i < G[*vertex].possible_bearings.size(); i++) {
+      EdgeBearing current = G[*vertex].possible_bearings.at(i);
+      gvg_mapper::EdgeBearingMsg eb;
+      eb.bearing_id = current.bearing_id;
+      eb.edge_id = current.edge_id;
+      eb.edge_angle_diff = current.edge_angle_diff;
+      eb.visited = current.visited;
+      bearings.push_back(eb);
+    }
+    msg.possible_bearings.assign(bearings.begin(), bearings.end());
+    msg.edge_angle_diffs.assign(G[*vertex].edge_angle_diffs.begin(), G[*vertex].edge_angle_diffs.end());
+    msg.closest_distance = G[*vertex].closest_distance;
+    msg.vertex_angle = G[*vertex].vertex_angle;
+    msg.surrounding_obstacles = G[*vertex].surrounding_obstacles;
+    msg.header = req.header;
+
+    gvg_node_pub.publish(msg);
+    
+    if (msg.node_id == v.node_id) res.node = msg;  
+    
+    ros::Rate r(50);
+    r.sleep();
+  }
+
   return true;
 }
 
@@ -445,23 +479,7 @@ bool GVGGraph::addEndpoint(gvg_mapper::AddEndpoint::Request& req, gvg_mapper::Ad
   v.edge_angle_diffs.push_back(2*M_PI);
 
   v = G[addVertex(v, req.robot_angle, req.pose)];
-
-  gvg_mapper::GVGNode msg;
-  msg.node_id = v.node_id;
-  msg.p       = v.p;
-  msg.degree  = v.expected_degree;
-  std::vector<double> possible_bearings;
-  possible_bearings.push_back(M_PI);
-  msg.possible_bearings = possible_bearings;
-  std::vector<double> edge_angle_diffs;
-  edge_angle_diffs.push_back(2*M_PI);
-  msg.edge_angle_diffs.assign(edge_angle_diffs.begin(), edge_angle_diffs.end());
-  msg.closest_distance = v.closest_distance;
-  msg.surrounding_obstacles = v.surrounding_obstacles;
-  msg.header = req.header;
   
-  gvg_node_pub.publish(msg);
-
   // Service call to localizer for process meetpoint
   localizer::UpdateFilter srv;
   srv.request.id = v.node_id;
@@ -491,12 +509,44 @@ bool GVGGraph::addEndpoint(gvg_mapper::AddEndpoint::Request& req, gvg_mapper::Ad
   // Update meetpoint locations with localizer data
   for (int i = 3; i < (int) X.size(); i += 3) {
     int meetpoint_id = (i - 3)/3;
-    geometry_msgs::Point32 p = G[meetpoint_id].p;
-    G[meetpoint_id].p.x = X.at(i);
-    G[meetpoint_id].p.y = X.at(i+1);
+    geometry_msgs::Point32 p;
+    p.x = X.at(i);
+    p.y = X.at(i+1);
+    G[meetpoint_id].p = p;
+    G[meetpoint_id].vertex_angle = X.at(i+2);
   }
+ 
+  Vertex_iter    vertex, vertex_end;
+  for (tie(vertex, vertex_end) = vertices(G); vertex != vertex_end; vertex++) {
+    gvg_mapper::GVGNode msg;
+    msg.node_id = G[*vertex].node_id;      
+    msg.p       = G[*vertex].p;
+    msg.degree  = G[*vertex].expected_degree;
+    std::vector<gvg_mapper::EdgeBearingMsg> bearings;
+    for (int i = 0; i < G[*vertex].possible_bearings.size(); i++) {
+      EdgeBearing current = G[*vertex].possible_bearings.at(i);
+      gvg_mapper::EdgeBearingMsg eb;
+      eb.bearing_id = current.bearing_id;
+      eb.edge_id = current.edge_id;
+      eb.edge_angle_diff = current.edge_angle_diff;
+      eb.visited = current.visited;
+      bearings.push_back(eb);
+    }
+    msg.possible_bearings.assign(bearings.begin(), bearings.end());
+    msg.edge_angle_diffs.assign(G[*vertex].edge_angle_diffs.begin(), G[*vertex].edge_angle_diffs.end());
+    msg.closest_distance = G[*vertex].closest_distance;
+    msg.vertex_angle = G[*vertex].vertex_angle;
+    msg.surrounding_obstacles = G[*vertex].surrounding_obstacles;
+    msg.header = req.header;
 
-  res.node = msg;
+    gvg_node_pub.publish(msg);
+    
+    if (msg.node_id == v.node_id) res.node = msg;  
+    
+    ros::Rate r(50);
+    r.sleep();
+  }  
+  
   return true;
 }
 
@@ -508,10 +558,18 @@ bool GVGGraph::extendGVGEdge(gvg_mapper::ExtendEdge::Request& req, gvg_mapper::E
   if ((int) currentEdge.line.size() == 0) {
     currentEdge.length = 0;
   } else {
-    currentEdge.length += norm(req.p, currentEdge.line.back());
+    geometry_msgs::Point32 p1;
+    p1.x = req.p_stamped.point.x;
+    p1.y = req.p_stamped.point.y;
+    p1.z = 0.0;
+    geometry_msgs::Point32 p2;
+    p2.x = currentEdge.line.back().point.x;
+    p2.y = currentEdge.line.back().point.y;
+    p2.z = 0.0;
+    currentEdge.length += norm(p1, p2);
   }
 
-  currentEdge.line.push_back(req.p);
+  currentEdge.line.push_back(req.p_stamped);
   
   res.success = true;
   return true;
@@ -581,7 +639,6 @@ bool GVGGraph::retrieveBearings(gvg_mapper::RetrieveBearings::Request& req, gvg_
     }
 
     if (bearings.size() > 0) {
-      unexploredEdgesCount.at(node_id) = unexploredEdgesCount.at(node_id) - 1;
       double chosen_bearing;
 
       /* Modify this to determine chosen bearing */
@@ -597,6 +654,13 @@ bool GVGGraph::retrieveBearings(gvg_mapper::RetrieveBearings::Request& req, gvg_
           chosen_bearing = bearings[bearings.size() - 1];
           break;
         }
+        case 2: {
+          cout << "Choose a direction for robot to explore next: ";
+          string str = "";
+          getline(cin, str);
+          chosen_bearing = atof(str.c_str());
+          break;
+        }
         default: {
           chosen_bearing = bearings[0];
           break;
@@ -606,6 +670,7 @@ bool GVGGraph::retrieveBearings(gvg_mapper::RetrieveBearings::Request& req, gvg_
     } else res.chosen_bearing = NULL;
 
     /* Update the chosen bearing as visited */
+
     for (int i = 0; i < (int) G[currentVertex].possible_bearings.size(); i++) {
       double relative_angle;
       int index = (i - arriving_bearing);
@@ -618,8 +683,7 @@ bool GVGGraph::retrieveBearings(gvg_mapper::RetrieveBearings::Request& req, gvg_
       else relative_angle = local_possible_bearings.at(index);
       if (relative_angle == res.chosen_bearing) {
         if (!G[currentVertex].possible_bearings.at(i).visited) {
-          G[currentVertex].possible_bearings.at(i).visited = true;
-          if (G[currentVertex].possible_bearings.at(i).edge_id == -1) G[currentVertex].possible_bearings.at(i).edge_id = currentEdge.edge_id;
+          lastVertexBearing = i;
         }
         break;
       }
@@ -636,9 +700,16 @@ bool GVGGraph::retrieveBearings(gvg_mapper::RetrieveBearings::Request& req, gvg_
     int target;
     target = req.target;
     int edge_id = -1;
+    double min_length = INFINITY;
     for (int i = 0; i < (int) edges_list.size(); i++) {
-      if ((edges_list.at(i).source == node_id) && (edges_list.at(i).target == target)) edge_id = edges_list.at(i).edge_id;
-      else if ((edges_list.at(i).source == target) && (edges_list.at(i).target == node_id)) edge_id = edges_list.at(i).edge_id;
+      bool correct_edge = false;
+      if (((edges_list.at(i).source == node_id) && (edges_list.at(i).target == target)) || ((edges_list.at(i).source == target) && (edges_list.at(i).target == node_id))) correct_edge = true;
+      if (correct_edge) {
+        if (edges_list.at(i).length < min_length) {
+          edge_id = edges_list.at(i).edge_id;
+          min_length = edges_list.at(i).length;
+        }
+      }
     }
     // No valid edge found, meaning we have the case of endpoint as first vertex encountered.
     Vertex currentVertex = nullVertex();
@@ -681,11 +752,33 @@ bool GVGGraph::retrieveBearings(gvg_mapper::RetrieveBearings::Request& req, gvg_
   }
 }
 
+bool GVGGraph::retrieveEdges(gvg_mapper::RetrieveEdges::Request& req, gvg_mapper::RetrieveEdges::Response& res) {
+  
+  for (int i = 0; i < edges_list.size(); i++) {
+    GVGEdge e = edges_list.at(i);
+    if (e.source == req.node_id || e.target == req.node_id) {
+      gvg_mapper::GVGEdgeMsg msg;
+      msg.edge_id = e.edge_id;
+      msg.source = e.source;
+      msg.target = e.target;
+      msg.length = e.length;
+      msg.line.assign(e.line.begin(), e.line.end());
+      
+      res.edges.push_back(msg);
+    }
+  }
+  
+  return true;
+}
+
 /*
  * Path begins from the end of the list.
  */
 bool GVGGraph::retrievePath(gvg_mapper::RetrievePath::Request& req, gvg_mapper::RetrievePath::Response& res) {
   vector<int> parents;
+  vector<double> distances(num_vertices(G));
+  res.distance = 0.0;
+  
   Vertex currentVertex = nullVertex();
   Vertex_iter vertex, vertex_end;
   for (tie(vertex, vertex_end) = vertices(G); vertex != vertex_end; vertex++) {
@@ -693,16 +786,17 @@ bool GVGGraph::retrievePath(gvg_mapper::RetrievePath::Request& req, gvg_mapper::
       currentVertex = *vertex;
     }
   }
-
-  parents = computeDijkstra(currentVertex);
-
-  // Choose the next target, depending on the policy.
+    
+  parents = computeDijkstra(currentVertex, distances);
   
+  
+  // Choose the next target, depending on the policy.
   int target = req.target;
   if (req.target == -1) target = closest_unexplored_vertex;
   
+  // Entire map has been explored.
   if (target == -1) {
-    // Entire map has been explored.
+    target = closest_unexplored_vertex;
     if (num_vertices(G) > 1) {
       vector<int> vertexList;
       res.vertex_list = vertexList;
@@ -710,19 +804,15 @@ bool GVGGraph::retrievePath(gvg_mapper::RetrievePath::Request& req, gvg_mapper::
   }
   // Still exploring, path planning to return to target.
   else {
-    ROS_INFO("Path planning to return to vertex %d", target);
-
+    res.distance = distances[target];
+    if (unexploredEdgesCount.at(target) > 0) res.frontier = true;
+    else res.frontier = false;
     vector<int> vertexList;
     vertexList.push_back(target);
     int current = parents[target];
     while (current != req.source) {
       vertexList.push_back(current);
       current = parents[current];
-    }
-    std::cout << "Shortest path proposed: ";
-    for (int i = vertexList.size() - 1; i >= 0; i--) {
-      if (i != 0) std::cout << vertexList.at(i) << " -> ";
-      else std::cout << vertexList.at(i) << std::endl;
     }
     res.vertex_list = vertexList;
   }
@@ -732,31 +822,82 @@ bool GVGGraph::retrievePath(gvg_mapper::RetrievePath::Request& req, gvg_mapper::
 /*
  * Returns Dijkstra parents list for each vertex.
  */
-vector<int> GVGGraph::computeDijkstra(Vertex v) { 
+vector<int> GVGGraph::computeDijkstra(Vertex v, vector<double> &distances) { 
   // Create things for Dijkstra
   vector<Vertex> parents(num_vertices(G)); // To store parents
-  vector<double> distances(num_vertices(G)); // To store distances
 
   boost::dijkstra_shortest_paths(G, v, boost::predecessor_map(&parents[0]).distance_map(&distances[0]));
   vector<int> result;
   // Output results
   closest_unexplored_vertex = -1;
   double distance = INFINITY;
-  std::cout << "distances and parents:" << std::endl;
   boost::graph_traits < Graph >::vertex_iterator vertexIterator, vend;
   for (boost::tie(vertexIterator, vend) = boost::vertices(G); vertexIterator != vend; ++vertexIterator) 
   {
-    std::cout << "distance(" << *vertexIterator << ") = " << distances[*vertexIterator] << ", ";
-    std::cout << "parent(" << *vertexIterator << ") = " << parents[*vertexIterator] << std::endl;
     if ((distances[*vertexIterator] < distance)&&(unexploredEdgesCount.at(*vertexIterator) > 0)) {
       closest_unexplored_vertex = *vertexIterator;
       distance = distances[*vertexIterator];
     }
     result.push_back(parents[*vertexIterator]);
   }
-  std::cout << std::endl;
-  
   return result;
+}
+
+bool GVGGraph::loadSavedMap(gvg_mapper::LoadSavedMap::Request& req, gvg_mapper::LoadSavedMap::Response& res) {
+    
+  mapLoadLocalization = false;  
+  int max_node_id = 0;
+  for (int i = 0; i < req.nodes.size(); i++) {
+    // Create vertex and copy information
+    GVGVertex v;
+    gvg_mapper::GVGNode node = req.nodes.at(i);
+    v.node_id = node.node_id;
+    if (v.node_id > max_node_id) max_node_id = v.node_id;    
+    v.p = node.p;
+    v.expected_degree = node.degree;
+    v.closest_distance = node.closest_distance;
+    int num_unexplored = 0;
+    for (int j = 0; j < node.possible_bearings.size(); j++) {
+      EdgeBearing eb;
+      gvg_mapper::EdgeBearingMsg ebm = node.possible_bearings.at(j);
+      eb.bearing_id = ebm.bearing_id;
+      eb.edge_id = ebm.edge_id;
+      eb.edge_angle_diff = ebm.edge_angle_diff;
+      eb.visited = ebm.visited;
+      // Increment num of unexplored edges
+      if (!eb.visited) num_unexplored++;
+      v.possible_bearings.push_back(eb);
+    }
+    v.edge_angle_diffs.assign(node.edge_angle_diffs.begin(), node.edge_angle_diffs.end());
+    v.vertex_angle = node.vertex_angle;
+    
+    // Add vertex to graph
+    unexploredEdgesCount.push_back(num_unexplored);
+    add_vertex(v, G);
+  }
+  
+  int max_edge_id = 0;
+  for (int i = 0; i < req.edges.size(); i++) {
+    GVGEdge e;
+    gvg_mapper::GVGEdgeMsg em = req.edges.at(i);
+    e.edge_id = em.edge_id;
+    if (e.edge_id > max_edge_id) max_edge_id = e.edge_id;
+    e.source = em.source;
+    e.target = em.target;
+    e.length = em.length;
+    e.line.assign(em.line.begin(), em.line.end());
+    
+    // Create EWP and add edge to graph G
+    EdgeWeightProperty weight(e.length);
+    add_edge(e.source, e.target, weight, G);
+    add_edge(e.target, e.source, weight, G);
+    edges_list.push_back(e);
+  }
+    
+  next_node_id = max_node_id + 1;
+  next_edge_id = max_edge_id + 1;
+  
+  return true;
 }
 
 /*

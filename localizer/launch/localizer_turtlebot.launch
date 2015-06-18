@@ -1,7 +1,10 @@
 <launch>
 
   <node ns="indoor/gvg/" name="localizerGVGNode" pkg="localizer" type="localizerGVGNode"  output="screen" args=" ">
-    <remap from="/indoor/odom" to="/pose_to_odom"/>
+    <remap from="/indoor/odom" to="/odom"/>
+    <param name="Wvv" value="0.075" type="double" />
+    <param name="Wvw" value="0.00" type="double" />
+    <param name="Www" value="0.0075" type="double" />
   </node>
 
 </launch>

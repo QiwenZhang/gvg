@@ -8,7 +8,7 @@
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/utility.hpp>                // for boost::tie
 #include <boost/graph/adjacency_list.hpp>
-#include <geometry_msgs/Point32.h>
+#include <geometry_msgs/PointStamped.h>
 #include <laser_node/Obstacles.h>
 #include "gvg_mapper/GVGNode.h"
 #include "gvg_mapper/GVGEdgeMsg.h"
@@ -22,7 +22,10 @@
 #include "gvg_mapper/RetrieveBearings.h"
 #include "gvg_mapper/RetrievePath.h"
 #include "gvg_mapper/CheckRelocalize.h"
-
+#include "gvg_mapper/LoadSavedMap.h"
+#include "gvg_mapper/RetrieveEdges.h"
+#include "localizer/InitLoadMapTransform.h"
+#include <localizer/UpdateFilter.h>
 /*
  * Radius of search for an existing vertex when we are trying to perform loop closure. In m.
  */
@@ -79,7 +82,7 @@ class GVGEdge {
   int target;
 
   int edge_id;
-  std::vector<geometry_msgs::Point32> line;
+  std::vector<geometry_msgs::PointStamped> line;
 
   double length;
 
@@ -152,6 +155,10 @@ class GVGGraph {
 
   bool checkRelocalize(gvg_mapper::CheckRelocalize::Request& req, gvg_mapper::CheckRelocalize::Response& res);
 
+  bool loadSavedMap(gvg_mapper::LoadSavedMap::Request& req, gvg_mapper::LoadSavedMap::Response& res);
+ 
+  bool retrieveEdges(gvg_mapper::RetrieveEdges::Request& req, gvg_mapper::RetrieveEdges::Response& res);
+
  private:
   Graph G;
   Out_edge_iter  out,    out_end;
@@ -168,6 +175,7 @@ class GVGGraph {
   double relocalize_epsilon;  
 
   int arriving_bearing;
+  bool mapLoadLocalization;
 
   // ROS launch params stored
   double closest_distance_threshold;
@@ -177,12 +185,13 @@ class GVGGraph {
 
   GVGEdge currentEdge;
   Vertex lastVertex;
+  int lastVertexBearing;
   std::vector<GVGEdge> edges_list;
   
   Vertex nullVertex();
   Vertex addVertex(GVGVertex& v, double robot_angle, geometry_msgs::PoseWithCovariance& pose);
   std::string vertex_state(int node_id);
-  std::vector<int> computeDijkstra(Vertex v);
+  std::vector<int> computeDijkstra(Vertex v, std::vector<double> &distances);
   
   // ID of the closest vertex with unexplored edges when path planning.
   int closest_unexplored_vertex;
@@ -208,7 +217,10 @@ class GVGGraph {
   ros::ServiceServer retrieve_bearings_srv;
   ros::ServiceServer retrieve_path_srv;
   ros::ServiceServer check_relocalize_srv;
+  ros::ServiceServer load_map_srv;
+  ros::ServiceServer retrieve_edges_srv;
   ros::ServiceClient process_meetpoint_cln;
+  ros::ServiceClient init_load_map_transform_cln;
   ros::Publisher     gvg_node_pub;
   ros::Publisher     gvg_edge_pub;
 };

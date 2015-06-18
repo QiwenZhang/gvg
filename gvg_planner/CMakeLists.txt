@@ -68,6 +68,7 @@ include_directories(
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
-add_executable(gvg_planner src/main.cpp src/Planner.cpp)
+add_executable(gvg_planner src/main.cpp src/ekf_sim.cpp src/Planner.cpp)
+#add_executable(gvg_planner src/main.cpp src/Planner.cpp)
 target_link_libraries(gvg_planner ${catkin_LIBRARIES} ${BULLET_LIBRARIES})
 add_dependencies(gvg_planner ${PROJECT_NAME}_generate_messages_cpp)

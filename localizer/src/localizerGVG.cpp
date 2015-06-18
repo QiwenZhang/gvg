@@ -2,7 +2,7 @@
 #include <limits>
 #include "localizerGVG.h"
 #include <tf/transform_listener.h>
-
+#include <fstream>
 
 localizerGVG::localizerGVG(std::string& robot_name):
   X(3),P(3,3) {
@@ -16,6 +16,8 @@ localizerGVG::localizerGVG(std::string& robot_name):
   updateService = nh.advertiseService("UpdateFilter"  , &localizerGVG::processMeetpoint,this);
   maxUncService = nh.advertiseService("MaxUncertainty", &localizerGVG::processMaxUnc,this);
   minUncService = nh.advertiseService("MinUncertainty", &localizerGVG::processMinUnc,this);
+  loadMapService = nh.advertiseService("LoadLocalizerMap", &localizerGVG::loadLocalizerMap, this);
+  initLoadMapTransService = nh.advertiseService("InitLoadMapTransform", &localizerGVG::initLoadMapTransform, this);
 
   nh.param("output_frame", output_frame, std::string("odom_combined"));
   posePub = nh.advertise<nav_msgs::Odometry>(output_frame, 10);
@@ -26,6 +28,8 @@ localizerGVG::localizerGVG(std::string& robot_name):
   
   filterOn=true;
   initOdom=false;
+  mapLoadLocalization = true;
+  bearing_angle = 0;
   nL=0; // number of landmarks
   // EKF constants
   X=VectorXd(3); // The state vector initialized to the pose of the robot.
@@ -33,7 +37,11 @@ localizerGVG::localizerGVG(std::string& robot_name):
 
   P=MatrixXd::Zero(3,3); // The covariance matrix
 
-  // The model noise covariance (linear and angular velocity)
+  // The model noise covariance (linear and angular velocity) defined in localizer launch files
+  nh.getParam("/indoor/gvg/localizerGVGNode/Wvv", this->_Wvv);
+  nh.getParam("/indoor/gvg/localizerGVGNode/Www", this->_Www);
+  nh.getParam("/indoor/gvg/localizerGVGNode/Wvw", this->_Wvw);
+  
   Qr<< _Wvv, _Wvw,
        _Wvw, _Www;
 
@@ -63,7 +71,8 @@ void localizerGVG::handleOdom(const nav_msgs::Odometry::ConstPtr& odom) {
     oldYaw=yaw;
     initOdom=true;
     oldStamp=odom->header.stamp;
-    X<<x,y,yaw;
+    Vector3d odomVector(x, y, yaw);
+    X.segment(0, 3) = odomVector;
     return;
   }
   if(filterOn) {
@@ -78,11 +87,9 @@ void localizerGVG::handleOdom(const nav_msgs::Odometry::ConstPtr& odom) {
     double dt=odom->header.stamp.toSec()-oldStamp.toSec();
     double Vm=sqrt(dx*dx+dy*dy)/dt;
     double Wm=dYaw/dt;
-    
     X(0)=X(0)+Vm*dt*cos(X(2));
     X(1)=X(1)+Vm*dt*sin(X(2));
-    X(2)=thetapp(X(2)+Wm*dt);\
-    
+    X(2)=thetapp(X(2)+Wm*dt);
     propagate(Vm,Wm,dt);
     // Publish the odometry with covariance topic
     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(X(2));
@@ -104,7 +111,7 @@ void localizerGVG::handleOdom(const nav_msgs::Odometry::ConstPtr& odom) {
   oldStamp=odom->header.stamp;
 }
 
-void localizerGVG::propagate(double Vm, double Wm, double dt) {
+void localizerGVG::propagate(double Vm, double Wm, double dt) {  
   Matrix3d Fr;
   Fr<<1, 0, -Vm*dt*sin(oldYaw),
       0, 1,  Vm*dt*cos(oldYaw),
@@ -145,7 +152,7 @@ void localizerGVG::propagateRL() {
 
 bool localizerGVG::processMeetpoint(localizer::UpdateFilter::Request  &req,
 				    localizer::UpdateFilter::Response &res) {
-
+              
   ROS_INFO("processMeetpoint received meetpoint %d [%lf,%lf,%lf]", req.id, req.x, req.y,req.yaw);
   ROS_INFO("processMeetpoint robot pose [%lf,%lf,%lf]",X(0),X(1),X(2));
   if(nL==0) {
@@ -177,6 +184,10 @@ bool localizerGVG::processMeetpoint(localizer::UpdateFilter::Request  &req,
   Hl.block(0,0,2,2)=CT(X(2));
   Hl(2,2)=1;
   if(newLandmark(req.id)) {
+    
+    // If pre-fix on loaded map, need to mark that this new node is in current frame
+    if (!mapLoadLocalization) preFixIdList.push_back(req.id);
+          
     // New Landmark
     idList.push_back(req.id);
     P.conservativeResize(P.rows()+3,P.cols()+3);
@@ -205,12 +216,13 @@ bool localizerGVG::processMeetpoint(localizer::UpdateFilter::Request  &req,
     nL++;
   }
   else {
+    
     // Find which landmark it is:
     int id=-1;
     for(unsigned int i=0; i<idList.size(); i++) {
       if(idList[i] == req.id) id=i;
     }
-    ROS_INFO("localizerGVG::processMeetpoint id %d %d",req.id, id);
+            
     //Sanity check:
     if(id < 0) {
       cerr<<"Not able to find id:"<<req.id<< "in the list of ids"<<endl;
@@ -219,27 +231,85 @@ bool localizerGVG::processMeetpoint(localizer::UpdateFilter::Request  &req,
       }
       cerr<<endl;
     }
-    // perform update
+    // Check if the revisited node was one from previous map or current map
+    // If from current map, don't use this node to compute transformation between old/new map
+    bool oldMapNode = true;
+    for (vector<int>::iterator it = preFixIdList.begin(); it != preFixIdList.end(); ++it){
+      if((*it)==id) {
+        oldMapNode = false;
+        break;
+      }
+    }
+    
+    if (!mapLoadLocalization && oldMapNode) {
+      // Copy the covariance information to Prr and also Xr
+      Vector3d offset;
+      offset(2) = X(2)-bearing_angle;
+      Vector2d v;
+      v(0) = X(3*id+3);
+      v(1) = X(3*id+4);
+      Vector2d rotated_mp;
+      rotated_mp = C(offset(2))*v;
+      offset(0) = X(0)-rotated_mp(0);
+      offset(1) = X(1)-rotated_mp(1);
+      
+      /*P.block(0,0,3,3) = P_init.block(3*id+3, 3*id+3, 3, 3);
+      // Copying information to Prl
+      P.block(0,3,3,3*nL) = P.block(3*id+3, 3, 3, 3*nL); 
+      P.block(3,0,3*nL,3) = P.block(3, 3*id+3, 3*nL, 3);*/
+            
+      mapLoadLocalization = true;
+      // Calculate translation between current frame and loaded map frame
+      for (unsigned int i = 0; i < nL; i++) {
+        bool corrected = false;
+        for (vector<int>::iterator it = preFixIdList.begin(); it != preFixIdList.end(); ++it){
+          if((*it)==i) {
+            corrected = true;
+            break;
+          }
+        }
+        if (!corrected) {
+          Vector2d v;
+          v(0) = X(3*i+3);
+          v(1) = X(3*i+4);
+          Vector2d result;
+          result = C(offset(2))*v;
+          X(3*i+3) = result(0);
+          X(3*i+4) = result(1);
+          
+          X(3*i+3) = X(3*i+3) + offset(0);
+          X(3*i+4) = X(3*i+4) + offset(1);
+          X(3*i+5) = thetapp(X(3*i+5) + offset(2));
+        }
+      }
+      
+      P = P_init;
+      X = X_init;
+    }
+    else {
+      // perform update
+      ROS_INFO("localizerGVG::processMeetpoint id %d %d",req.id, id);
 
-    Vector3d z_est;
-    z_est.segment(0,2)=CT(X(2))*(X.segment(3+3*id,2)-X.segment(0,2));
-    z_est(2)=X(3+3*id+2)-X(2);
+      Vector3d z_est;
+      z_est.segment(0,2)=CT(X(2))*(X.segment(3+3*id,2)-X.segment(0,2));
+      z_est(2)=X(3+3*id+2)-X(2);
 
-    Vector3d r;
-    r.segment(0,2)=z.segment(0,2)-z_est.segment(0,2);
-    r(2)=angleDiff(z(2),z_est(2));
-    MatrixXd H(3,3+3*nL);
-    H=MatrixXd::Zero(3,3+3*nL);
+      Vector3d r;
+      r.segment(0,2)=z.segment(0,2)-z_est.segment(0,2);
+      r(2)=angleDiff(z(2),z_est(2));
+      MatrixXd H(3,3+3*nL);
+      H=MatrixXd::Zero(3,3+3*nL);
 
-    H.block(0,0,3,3)=Hr;
-    H.block(0,3+3*id,3,3)=Hl;
-    MatrixXd S(3,3);
-    S=H*P*H.transpose()+R;
-    MatrixXd K(3,3+3*nL);
-    K=P*H.transpose()*S.inverse();
-    X=X+K*r;
-    X(2)=thetapp(X(2));
-    P=(MatrixXd::Identity(3+nL*3,3+nL*3)-K*H)*P*(MatrixXd::Identity(3+nL*3,3+nL*3)-K*H).transpose()+K*R*K.transpose();
+      H.block(0,0,3,3)=Hr;
+      H.block(0,3+3*id,3,3)=Hl;
+      MatrixXd S(3,3);
+      S=H*P*H.transpose()+R;
+      MatrixXd K(3,3+3*nL);
+      K=P*H.transpose()*S.inverse();
+      X=X+K*r;
+      X(2)=thetapp(X(2));
+      P=(MatrixXd::Identity(3+nL*3,3+nL*3)-K*H)*P*(MatrixXd::Identity(3+nL*3,3+nL*3)-K*H).transpose()+K*R*K.transpose();
+    }
   }
   // publish the odometry with covariance topic    
   
@@ -258,9 +328,41 @@ bool localizerGVG::processMeetpoint(localizer::UpdateFilter::Request  &req,
     }
   }
   mapPub.publish(theMap);
-
   return(true);
 }
+
+bool localizerGVG::loadLocalizerMap(localizer::LoadLocalizerMap::Request &req, localizer::LoadLocalizerMap::Response &res) {
+  
+  mapLoadLocalization = false;
+  
+  nL = req.nL;
+  X = VectorXd(3*nL+3);
+  P = MatrixXd::Zero(3*nL+3, 3*nL+3);
+  X_init = VectorXd(3*nL+3);
+  P_init = MatrixXd::Zero(3*nL+3, 3*nL+3);
+  
+  for (int i = 0; i < req.ids.size(); i++) {
+    idList.push_back(req.ids.at(i));
+  }
+  for(int i = 0; i < req.state.size(); i++) {
+    X(i) = req.state.at(i);
+    X_init(i) = req.state.at(i);
+  }
+  std::vector<double>::const_iterator it = req.cov.begin();
+  int covSize = 3*nL + 3;
+  for (int i = 0; i < covSize; i++) {
+    for (int j = 0; j < covSize; j++) {
+      P(i,j) = *it;
+      P_init(i,j) = *it;
+      it++;
+    }
+  }
+  P.block(0,0,3,3) = MatrixXd::Zero(3,3);
+  P.block(0,3,3,3*nL) = MatrixXd::Zero(3, 3*nL);
+  P.block(3,0,3*nL,3) = MatrixXd::Zero(3*nL, 3);
+  return true;
+}
+
 double localizerGVG::thetapp(double theta) {
   while(theta>M_PI) theta-=2.0*M_PI;
   while(theta<-M_PI) theta+=2.0*M_PI;
@@ -311,12 +413,18 @@ Matrix2d localizerGVG::C(double angle) {
   return(c);
 }
 
+bool localizerGVG::initLoadMapTransform(localizer::InitLoadMapTransform::Request &req, localizer::InitLoadMapTransform::Response &res) {
+  
+  bearing_angle = req.bearing_angle;
+  return true;
+}
+
 bool localizerGVG::processMaxUnc(localizer::MaxUncertainty::Request  &req,
 				 localizer::MaxUncertainty::Response &res)  {
   double maxT=0;
   res.id=-1;
   for(int i=0; i<nL; i++) {
-    double tmpT=P.block(3+i*2,3+i*2,2,2).trace();
+    double tmpT=P.block(3+i*3,3+i*3,3,3).trace();
     if(tmpT>maxT) {
       maxT=tmpT;
       res.id=i;
@@ -331,7 +439,7 @@ bool localizerGVG::processMinUnc(localizer::MinUncertainty::Request  &req,
   double minT=1000000;
   res.id=-1;
   for(int i=0; i<nL; i++) {
-    double tmpT=P.block(3+i*2,3+i*2,2,2).trace();
+    double tmpT=P.block(3+i*3,3+i*3,3,3).trace();
     if(tmpT<minT) {
       minT=tmpT;
       res.id=i;

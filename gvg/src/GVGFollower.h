@@ -124,8 +124,8 @@ class GVGFollower {
   /* The (at least three) objects that are going to define a meetpoint need to have
    closest point ranges that differ no more than this quantity. In m. */
   double MEETPOINT_THRESHOLD;
-  double LEAVE_MEETPOINT_MIN_DIST = 0.15;
-  double LEAVE_MEETPOINT_MAX_DIST = 0.40;
+  double LEAVE_MEETPOINT_MIN_DIST;
+  double LEAVE_MEETPOINT_MAX_DIST;
   
   double laser_offset_x;
   double laser_offset_y;

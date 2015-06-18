@@ -118,8 +118,8 @@ void handle_edges(const gvg_mapper::GVGEdgeMsg::ConstPtr& msg) {
   std::vector<geometry_msgs::Point> pts;
   for (int j = 0; j < (int) msg->line.size(); j++) {
     geometry_msgs::Point pt;
-    pt.x = msg->line.at(j).x;
-    pt.y = msg->line.at(j).y;
+    pt.x = msg->line.at(j).point.x;
+    pt.y = msg->line.at(j).point.y;
     pts.push_back(pt);
   }
   
@@ -139,9 +139,9 @@ void handle_edges(const gvg_mapper::GVGEdgeMsg::ConstPtr& msg) {
   m_id.color.a = 1.0; m_id.color.r = 0.0; m_id.color.g = 1.0; m_id.color.b = 0.0;
   m_id.text = boost::lexical_cast<std::string>(msg->edge_id);
   int size = msg->line.size();
-  m_id.pose.position.x = msg->line.at(floor(size/2.0)).x;
-  m_id.pose.position.y = msg->line.at(floor(size/2.0)).y;
-  m_id.pose.position.z = msg->line.at(floor(size/2.0)).z + 0.4;
+  m_id.pose.position.x = msg->line.at(floor(size/2.0)).point.x;
+  m_id.pose.position.y = msg->line.at(floor(size/2.0)).point.y;
+  m_id.pose.position.z = 0.4;
 
   edges_names_pub.publish(m_id);  
   edges_pub.publish(m);

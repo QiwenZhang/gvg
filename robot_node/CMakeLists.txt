@@ -25,7 +25,8 @@ add_message_files(FILES
 add_service_files(FILES
 #Brake.srv   Demo.srv  Leds.srv       RelTranslate.srv  Start.srv  Tank.srv
 #Circle.srv  Dock.srv  RelRotate.srv  Reset.srv         Stop.srv   Turn.srv
-RelTranslate.srv  RelRotate.srv
+RelTranslate.srv
+RelRotate.srv
 Brake.srv
 )
 

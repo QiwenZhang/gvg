@@ -1,7 +1,7 @@
 # Desired goal
 
 float64   lin_vel   # [m/s]
-bool      do_move   # if false, then does not move the robot, but expects the 
+int32      do_move   # if false, then does not move the robot, but expects the 
                     # robot to be dragged manually on the screen or teleoperated 
 ---
 
@@ -11,13 +11,13 @@ uint8 FOUND_ENDPOINT=1
 uint8 FOUND_NO_OBSTACLES=2
 uint8 PREEMPTED=3
 
-bool  success                                 
+int32  success                                 
 int32 stoppedBecause                         # 0 -- found a meetpoint  
                                              # 1 -- found an endpoint 
 					     # 2 -- found no obstacles
 					     # 3 -- preempted
 
-gvg/GVGNode   node                     # Valid for cases 0 and 1, the node that caused the follow edge to terminate
+gvg_mapper/GVGNode   node                     # Valid for cases 0 and 1, the node that caused the follow edge to terminate
 
 ---
 

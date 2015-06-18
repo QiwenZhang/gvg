@@ -1,4 +1,4 @@
 float64   lin_vel   # [m/s]
 float64   ang_vel   # [rad/s] 
 ---
-bool success
+int32 success
